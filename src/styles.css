@@ -1,0 +1,239 @@
+/* === STT Uutiskatsaus — Portrait 65" Info Display === */
+/* 1080×1920 portrait, readable from 5 m, no scroll */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0a0e17;
+  color: #e8eaed;
+  font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+#root {
+  height: 100vh;
+  padding: 12px 20px;
+}
+
+.app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #1e90ff;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+.header-left { display: flex; align-items: center; gap: 10px; }
+.header-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e90ff;
+  letter-spacing: 2px;
+}
+.header-clock {
+  font-size: 36px;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.live-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #34d399;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Date bar ── */
+.date-bar {
+  display: flex;
+  justify-content: space-between;
+  font-size: 18px;
+  color: #5f6368;
+  padding: 2px 0 4px;
+  flex-shrink: 0;
+}
+.update-info { color: #5f6368; }
+
+/* ── World Clocks ── */
+.world-clocks {
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  padding: 1.5vh 1vw 1vh;
+  border-bottom: 1px solid #1a2540;
+  margin-bottom: 0.3vh;
+  flex-shrink: 0;
+}
+.world-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+.wc-face {
+  width: min(14vh, 16vw);
+  height: min(14vh, 16vw);
+}
+.wc-city {
+  font-size: 1.8vh;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 1px;
+  margin-top: 0.5vh;
+}
+.wc-digital {
+  font-size: 1.5vh;
+  font-weight: 500;
+  color: #667788;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Section labels ── */
+.section-label {
+  font-size: 36px;
+  font-weight: 700;
+  color: #1e90ff;
+  letter-spacing: 3px;
+  padding: 10px 0 4px;
+  border-bottom: 1px solid #1a2744;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+/* ── Headlines container ── */
+.top-stories {
+  flex: 2 1 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  min-height: 0;
+}
+
+.latest-news {
+  flex: 3 1 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Headline rows ── */
+.headline-row {
+  display: grid;
+  grid-template-columns: 160px 1fr 110px;
+  align-items: baseline;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  gap: 12px;
+}
+
+.hl-source-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hl-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-sm { width: 8px; height: 8px; }
+
+/* ── Pääuutiset: BIG fonts, 1-line clamp ── */
+.hl-source {
+  font-size: 30px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hl-title {
+  font-size: 50px;
+  font-weight: 600;
+  color: #e8eaed;
+  line-height: 1.15;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hl-time {
+  font-size: 28px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── Tuoreimmat: smaller ── */
+.src-sm { font-size: 24px; }
+.title-sm {
+  font-size: 34px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.time-sm { font-size: 22px; }
+
+/* ── Time freshness colors ── */
+.time-fresh { color: #34d399; font-weight: 700; }
+.time-recent { color: #fbbf24; }
+.time-old { color: #6b7280; }
+
+/* ── NEW badge ── */
+.new-badge {
+  display: inline-block;
+  background: #34d399;
+  color: #0a0e17;
+  font-size: 16px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 6px;
+  vertical-align: middle;
+  letter-spacing: 1px;
+}
+
+/* ── Trends bar ── */
+.trend-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.trend-pill {
+  background: #1a2744;
+  color: #8ab4f8;
+  font-size: 18px;
+  padding: 2px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.trend-count {
+  color: #5f6368;
+  font-size: 15px;
+  margin-left: 4px;
+}
+
+/* ── Ticker ── */
+
