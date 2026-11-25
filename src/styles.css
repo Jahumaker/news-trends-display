@@ -49,7 +49,11 @@ body {
 .live-dot {
   width: 12px; height: 12px; border-radius: 50%;
   background: #34d399;
-  /* V18: jatkuva sykkivä animaatio poistettu laitteen kuormituksen vähentämiseksi */
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 /* ── Date bar ── */
