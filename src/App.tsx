@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react'
 
 // ── Types ──
 interface Article {
@@ -114,30 +114,28 @@ const WORLD_CLOCKS = [
   { city: 'SYDNEY',   tz: 'Australia/Sydney' },
 ];
 
+// V18: muotoilijat luodaan kerran ja käytetään uudelleen (kevyempi laitteelle)
+const FMT_CACHE: Record<string, Intl.DateTimeFormat> = {};
+function fmt(key: string, locale: string, opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  return FMT_CACHE[key] || (FMT_CACHE[key] = new Intl.DateTimeFormat(locale, opts));
+}
+
 function formatTz(d: Date, tz: string): string {
-  return d.toLocaleTimeString('fi-FI', {
-    timeZone: tz,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
+  return fmt('d|' + tz, 'fi-FI', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
 }
 
-function tzParts(d: Date, tz: string): { h: number; m: number; s: number } {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: tz,
-    hour: 'numeric', minute: 'numeric', second: 'numeric',
-    hour12: false,
-  }).formatToParts(d);
+function tzParts(d: Date, tz: string): { h: number; m: number } {
+  const parts = fmt('p|' + tz, 'en-US', { timeZone: tz, hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(d);
   const get = (t: string) => parseInt(parts.find(p => p.type === t)?.value || '0', 10);
-  return { h: get('hour') % 12, m: get('minute'), s: get('second') };
+  return { h: get('hour') % 12, m: get('minute') };
 }
 
-function AnalogClock({ d, tz, city }: { d: Date; tz: string; city: string }) {
-  const { h, m, s } = tzParts(d, tz);
+// V18: ei sekuntiviisaria; kello piirretään uudelleen vain kerran minuutissa
+const AnalogClock = memo(function AnalogClock({ minuteKey, tz, city }: { minuteKey: number; tz: string; city: string }) {
+  const d = new Date(minuteKey);
+  const { h, m } = tzParts(d, tz);
   const hAngle = (h + m / 60) * 30;   // 360/12
-  const mAngle = (m + s / 60) * 6;    // 360/60
-  const sAngle = s * 6;
+  const mAngle = m * 6;               // 360/60
   const R = 44; // clock radius
   const CX = 50, CY = 50;
 
@@ -165,21 +163,25 @@ function AnalogClock({ d, tz, city }: { d: Date; tz: string; city: string }) {
         {markers}
         {hand(hAngle, 24, 3.5, '#ffffff')}
         {hand(mAngle, 34, 2.5, '#ffffff')}
-        {hand(sAngle, 38, 1, '#ef4444')}
         <circle cx={CX} cy={CY} r="2.5" fill="#ef4444" />
       </svg>
       <span className="wc-city">{city}</span>
       <span className="wc-digital">{formatTz(d, tz)}</span>
     </div>
   );
-}
+});
 
 function formatTime(d: Date): string {
-  return d.toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return fmt('hm', 'fi-FI', { hour: '2-digit', minute: '2-digit' }).format(d);
 }
 
 function formatDate(d: Date): string {
-  return d.toLocaleDateString('fi-FI', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return fmt('date', 'fi-FI', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+}
+
+function currentMinute(): number {
+  const t = Date.now();
+  return t - (t % 60000);
 }
 
 // ── Source classification ──
@@ -264,15 +266,20 @@ export default function App() {
   const [data, setData] = useState<NewsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [clock, setClock] = useState(new Date());
+  const [minuteKey, setMinuteKey] = useState(currentMinute());
   const [lastUpdate, setLastUpdate] = useState('');
+  const lastGenerated = useRef<string>('');
 
   const fetchNews = useCallback(async () => {
     try {
       const resp = await fetch(`./data/news.json?t=${Date.now()}`, { cache: 'no-store' });
       if (!resp.ok) throw new Error('Datan haku epäonnistui');
       const parsed: NewsData = await resp.json();
-      setData(parsed);
+      // V18: näkymä piirretään uudelleen vain, jos data on oikeasti muuttunut
+      if (parsed.generated_at !== lastGenerated.current) {
+        lastGenerated.current = parsed.generated_at;
+        setData(parsed);
+      }
       setLastUpdate(formatTime(new Date()));
       setError(null);
     } catch (e: unknown) {
@@ -283,10 +290,31 @@ export default function App() {
     }
   }, []);
 
+  // V18: kello päivittyy minuutin vaihtuessa, ei joka sekunti
   useEffect(() => {
-    const t = setInterval(() => setClock(new Date()), 1000);
-    return () => clearInterval(t);
+    let t: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      setMinuteKey(currentMinute());
+      t = setTimeout(tick, 60000 - (Date.now() % 60000) + 50);
+    };
+    t = setTimeout(tick, 60000 - (Date.now() % 60000) + 50);
+    return () => clearTimeout(t);
   }, []);
+
+  // V18: lajittelu ja valinnat lasketaan vain, kun data muuttuu
+  const derived = useMemo(() => {
+    if (!data) return null;
+    const articles = [...(data.articles || [])].sort(
+      (a, b) => new Date(b.published).getTime() - new Date(a.published).getTime()
+    );
+    const topStories = pickTopStories(articles);
+    return {
+      trendingTopics: (data.trending_topics || []).slice(0, 6),
+      topStories,
+      latestNews: pickLatest(articles, topStories),
+    };
+  }, [data]);
+  const clock = new Date(minuteKey);
 
   useEffect(() => {
     fetchNews();
@@ -312,15 +340,8 @@ export default function App() {
     );
   }
 
-  if (!data) return null;
-
-  // Sort all articles by actual UTC time (handles mixed timezones)
-  const articles = [...(data.articles || [])].sort(
-    (a, b) => new Date(b.published).getTime() - new Date(a.published).getTime()
-  );
-  const trendingTopics = (data.trending_topics || []).slice(0, 6);
-  const topStories = pickTopStories(articles);
-  const latestNews = pickLatest(articles, topStories);
+  if (!data || !derived) return null;
+  const { trendingTopics, topStories, latestNews } = derived;
 
   return (
     <div className="app-root">
@@ -338,7 +359,7 @@ export default function App() {
       {/* ─── WORLD CLOCKS ─── */}
       <div className="world-clocks">
         {WORLD_CLOCKS.map(({ city, tz }) => (
-          <AnalogClock key={city} d={clock} tz={tz} city={city} />
+          <AnalogClock key={city} minuteKey={minuteKey} tz={tz} city={city} />
         ))}
       </div>
 
