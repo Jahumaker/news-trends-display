@@ -1,11 +1,13 @@
 name: Päivitä ja julkaise
 
+# V17: ajastus kerran tunnissa klo 6-24.
 # V16: rakennus ja julkaisu erillisissä vaiheissa, julkaisulle varayritys,
 # actions-vaiheet päivitetty Node 24 -versioihin.
 
 on:
   schedule:
-    - cron: '* * * * *'  # GitHub ajaa käytännössä harvemmin
+    # Kerran tunnissa 17 yli, klo 6-24 Suomen aikaa (UTC 3-21 kattaa kesä- ja talviajan)
+    - cron: '17 3-21 * * *'
   workflow_dispatch:
 
 permissions:
@@ -83,3 +85,4 @@ jobs:
       - id: deploy_retry
         if: steps.deploy.outcome == 'failure'
         uses: actions/deploy-pages@v5
+
